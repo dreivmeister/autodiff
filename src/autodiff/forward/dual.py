@@ -1,6 +1,34 @@
 import numpy as np
 
 
+class DDual:
+    def __init__(self, val, der=1.0):
+        if np.isscalar(val):
+            self.val = np.array([val])
+        else:
+            self.val = np.array(val)
+        self.der = der
+    
+    
+def pushforward(f, primal, tangent):
+    input = DDual(primal, tangent)
+    output = f(input)
+    return output.val, output.der
+    
+
+def derivative(f, x):
+    if isinstance(x, float):
+        v = 1.0
+    elif isinstance(x, np.ndarray):
+        v = np.ones_like(x)
+    _, df_dx = pushforward(f, x, v)
+    return df_dx
+    
+
+
+    
+    
+
 class Dual:
     """
     Primary data structure for forward mode automatic differentiation.
@@ -55,9 +83,27 @@ class Dual:
     Dual.from_array
 
     """
-    def __init__(self, val, der=1):
-        self.val = val
-        self.der = np.array(der, ndmin=1)
+    def __init__(self, val, der=1.0):
+        # univariate function (R -> R)
+        if np.isscalar(val) and np.isscalar(der):
+            self.val = np.array([val])
+            self.der = np.array([der])
+        # mulivariate function (R^n -> R)
+        # vector function (R^n -> R^m)
+        # implicit vector value and derivative
+        # for explicit scalar values use from_array
+        elif hasattr(val, "__len__"):
+            val = np.array(val)
+            if np.ndim(val) != 1:
+                raise Exception(f"array must be 1-dimensional")
+            if len(val) == 1:
+                self.val = val
+                self.der = np.array([der])
+            else:
+                self.val = val
+                self.der = np.identity(len(self.val))
+                # or: self.der = np.ones_like(self.val)
+            
 
     @property
     def ndim(self):
@@ -147,7 +193,7 @@ class Dual:
         if np.ndim(X) != 1:
             raise Exception(f"array must be 1-dimensional")
         if len(X) == 1:
-            return Dual(X[0], 1)
+            return Dual(X[0], 1.0)
 
         I = np.identity(len(X))
         return iter(Dual(x, I[i]) for i, x in enumerate(X))

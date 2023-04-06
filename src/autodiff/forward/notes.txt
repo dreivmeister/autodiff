@@ -1,0 +1,1 @@
+- 1.0 behaves the same as np.array([1.0])

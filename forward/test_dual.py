@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from ..src.autodiff.forward.dual import Dual
+from dual import Dual
 
 from utils import _equal, _compare
 
@@ -11,16 +11,12 @@ def test_dual_constant(val):
     x = Dual.constant(val)
     assert _equal(x, val, 0)
 
-test_dual_constant([1, -6.2])
 
 @pytest.mark.parametrize("val", [0.7, -64])
 @pytest.mark.parametrize("der", [-2, 4.2])
 def test_dual_univariate(val, der):
     x = Dual(val, der)
     assert _equal(x, val, der)
-
-test_dual_univariate([0.7, -64], [-2, 4.2])
-
 
 
 @pytest.mark.parametrize("val", [0.7, -64])
@@ -36,6 +32,12 @@ def test_dual_from_array(vals):
 
     for x, val, der in zip(xs, vals, np.identity(len(vals))):
         assert _equal(x, val, der)
+
+
+@pytest.mark.parametrize("val", [np.array([0.7, -64])])
+def test_dual_from_array_vector_out(val):
+    x = Dual.from_array(val, var_out=False)
+    assert _equal(x, val, np.ones_like(val))
 
 
 def test_dual_from_non_1d_array():
@@ -494,3 +496,7 @@ def test_ne_multivariate():
     val = True
     der = [True, True]
     assert _compare((x != y), val, der)
+
+
+if __name__ == "__main__":
+    pytest.main([__file__])
