@@ -115,6 +115,24 @@ def test_add_multivariate(val1, der1, val2, der2):
     x = Dual(val1, der1)
     y = Dual(val2, der2)
     assert _equal(x + y, val1 + val2, der1 + der2)
+    
+
+@pytest.mark.parametrize("val1", [np.array([0.7, -64])])
+@pytest.mark.parametrize("val2", [np.array([-2, 4.2])])
+def test_add_vector(val1, val2):
+    # x = val1.copy()
+    # y = Dual.from_array(val2, var_out=False)
+    # assert _equal(x + y, val1 + val2, np.zeros_like(val1) + y.der)
+
+    # x = Dual.from_array(val1, var_out=False)
+    # y = val2.copy()
+    # assert _equal(x + y, val1 + val2, np.zeros_like(val2) + x.der)
+    
+    # should also work for constant vectors
+    x = Dual.from_array(val1, var_out=False)
+    y = Dual.from_array(val2, var_out=False)
+    assert _equal(x + y, val1 + val2, x.der + y.der)
+    
 
 
 @pytest.mark.parametrize("val1", [0.7, -64])
@@ -167,6 +185,14 @@ def test_sub_multivariate(val1, der1, val2, der2):
     x = Dual(val1, der1)
     y = Dual(val2, der2)
     assert _equal(x - y, val1 - val2, der1 - der2)
+    
+@pytest.mark.parametrize("val1", [np.array([0.7, -64])])
+@pytest.mark.parametrize("val2", [np.array([-2, 4.2])])
+def test_sub_vector(val1, val2):
+    # should also work for constant vectors
+    x = Dual.from_array(val1, var_out=False)
+    y = Dual.from_array(val2, var_out=False)
+    assert _equal(x - y, val1 - val2, x.der - y.der)
 
 
 @pytest.mark.parametrize("val1", [0.7, -64])
@@ -219,6 +245,14 @@ def test_mul_multivariate(val1, der1, val2, der2):
     x = Dual(val1, der1)
     y = Dual(val2, der2)
     assert _equal(x * y, val1 * val2, val1 * der2 + val2 * der1)
+    
+@pytest.mark.parametrize("val1", [np.array([0.7, -64])])
+@pytest.mark.parametrize("val2", [np.array([-2, 4.2])])
+def test_mul_vector(val1, val2):    
+    # should also work for constant vectors
+    x = Dual.from_array(val1, var_out=False)
+    y = Dual.from_array(val2, var_out=False)
+    assert _equal(x * y, val1 * val2, val1 * y.der + val2 * x.der)
 
 
 @pytest.mark.parametrize("val1", [0.7, -64])
@@ -272,6 +306,14 @@ def test_truediv_multivariate(val1, der1, val2, der2):
     y = Dual(val2, der2)
     assert _equal(x / y, val1 / val2, (val2 * der1 - val1 * der2) / (val2**2))
 
+@pytest.mark.parametrize("val1", [np.array([0.7, -64])])
+@pytest.mark.parametrize("val2", [np.array([-2, 4.2])])
+def test_truediv_vector(val1, val2):    
+    # should also work for constant vectors
+    x = Dual.from_array(val1, var_out=False)
+    y = Dual.from_array(val2, var_out=False)
+    assert _equal(x / y, val1 / val2, (val2 * x.der - val1 * y.der) / (val2**2))
+
 
 @pytest.mark.parametrize("val1", [0.7, 64])
 @pytest.mark.parametrize("val2", [-2, 4.2])
@@ -287,6 +329,22 @@ def test_pow_constants(val1, val2):
     x = Dual.constant(val1)
     y = Dual.constant(val2)
     assert _equal(x**y, val1**val2, 0)
+    
+    
+# @pytest.mark.parametrize("val1", [np.array([0.7, 64])])
+# @pytest.mark.parametrize("val2", [np.array([-2, 4.2])])
+# def test_pow_constant_vector(val1, val2):
+#     x = Dual.constant_vector(val1)
+#     y = Dual.constant_vector(val2)
+#     assert _equal(x**y, val1**val2, 0)
+
+#     x = Dual.constant_vector(val1)
+#     y = val2
+#     assert _equal(x**y, val1**val2, np.zeros_like(val1))
+
+#     x = Dual.constant_vector(val1)
+#     y = Dual.constant_vector(val2)
+#     assert _equal(x**y, val1**val2, np.zeros_like(val1))
 
 
 @pytest.mark.parametrize("val1", [-0.7, -64])

@@ -9,20 +9,6 @@ import numpy as np
 #             self.val = np.array(val)
 #         self.der = der
     
-    
-# def pushforward(f, primal, tangent):
-#     input = DDual(primal, tangent)
-#     output = f(input)
-#     return output.val, output.der
-    
-
-# def derivative(f, x):
-#     if isinstance(x, float):
-#         v = 1.0
-#     elif isinstance(x, np.ndarray):
-#         v = np.ones_like(x)
-#     _, df_dx = pushforward(f, x, v)
-#     return df_dx
 
 class Dual:
     """
@@ -90,6 +76,11 @@ class Dual:
     def constant(val, ndim=1):
         zeros = np.zeros(ndim)
         return Dual(val, zeros)
+    
+    @staticmethod
+    def constant_vector(val):
+        zeros = np.zeros_like(val)
+        return Dual(val, zeros)
 
     @staticmethod
     def from_array(X, var_out=True):
@@ -112,6 +103,8 @@ class Dual:
     def _compatible(self, other, operand=None):
         if isinstance(other, (int, float)):
             return Dual.constant(other, ndim=self.ndim)
+        elif isinstance(other, (np.ndarray, list)):
+            return Dual.constant_vector(other)
         elif isinstance(other, Dual):
             if self.ndim == other.ndim:
                 return other
@@ -220,7 +213,47 @@ class Dual:
             return self.val != other.val, self.der != other.der
 
 
+def f(x):
+    return x**4 + 3*x
+
+def pushforward(f, primal, tangent):
+    if isinstance(primal, float):
+        inp = Dual(primal, tangent)
+    elif isinstance(primal, np.ndarray):
+        inp = Dual.from_array(primal, var_out=False)
+    output = f(inp)
+    return output.val, output.der
+
+def derivative(f, x):
+    if isinstance(x, float):
+        v = 1.0
+    elif isinstance(x, np.ndarray):
+        v = np.ones_like(x)
+    f_x, df_dx = pushforward(f, x, v)
+    return f_x, df_dx
+
+
+
 
 if __name__=="__main__":
-    d = Dual.from_array([1.,2.], var_out=False)
-    print(d.val, d.der)
+    
+    
+    x_p = np.array([10.,8.])
+    print(derivative(f,x_p))
+    
+    
+    
+    # t = Dual.constant_vector([1.,2.])
+    # print(t)
+    
+    # a1 = np.array([1.,2.])
+    # a2 = np.array([2.,3.])
+    
+    
+    # d = Dual.from_array(a1, var_out=False)
+    # d1 = Dual.from_array(a2, var_out=False)
+    
+    # d2 = d + a2
+    # print(d2.val, d2.der)
+    # print(d2.val, d.val + d1.val)
+    # print(d2.der, d.der + d1.der)
