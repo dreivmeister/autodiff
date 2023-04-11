@@ -307,8 +307,8 @@ class Node:
         """
         if other := self._isConstant(other):
             child = Node(self.val + other.val)
-            self._addChildren(1.0,child)
-            other._addChildren(1.0,child)
+            self._addChildren(1.0, child)
+            other._addChildren(1.0, child)
             return child
 
     def __radd__(self,other):

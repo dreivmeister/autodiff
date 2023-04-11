@@ -18,17 +18,12 @@ def arg_checker(other, name):
 
 class Dual:
     def __init__(self, real, dual=None) -> None:
-        """
-        Dual(1.0)
-        Dual([1.,2.])
-        Dual([1.,2.],[2.,3.])
-        """
         self.type = None
         self.real = None
         self.dual = None
         
         # real can be int or float
-        if isinstance(real, (int,float,np.int32)):
+        if isinstance(real, (int,float,np.int32,np.float64)):
             self.type = D_NUMBER
             self.real = real
             if isinstance(dual, (int, float)):
