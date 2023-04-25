@@ -15,12 +15,6 @@ class Tensor:
         self.broadcast_dim = None
         self.name = name
         
-        
-        # if one dimensional -> add a batch dimension of 1
-        # should maybe remove this when not working with neural nets
-        # if self.data.ndim == 1:
-        #     self.data = np.expand_dims(self.data, axis=0)
-        
     def __repr__(self):
         if self.data.ndim > 1:
             return f'Tensor(data=\n{self.data}, grad=\n{self.grad})'
@@ -50,7 +44,6 @@ class Tensor:
         
         sliced_tensor.broadcast_dim = self.broadcast_dim
         sliced_tensor.name = self.name
-        
         
         return sliced_tensor
     
@@ -118,9 +111,7 @@ class Tensor:
         def grad_fn(gradient):
             # gradient is of shape out
             gradient_split = np.split(gradient,n,axis=axis)
-            
             for i in range(n):
-                #seq[i].grad = np.zeros_like(gradient_split[i])
                 seq[i].grad += gradient_split[i]
         out.grad_fn = grad_fn
         
@@ -407,10 +398,6 @@ class Tensor:
         batch_size, out_channels, out_height, out_width = output_shape
         out = np.random.randn(*output_shape)
         
-        print(f"out {out.shape}")
-        print(f"kernels {kernels.shape}")
-        print(f"self {self.shape}")
-        
         in_channels = self.shape[1]
         #out = np.zeros_like(*output_shape)
         for k in range(batch_size):
@@ -420,7 +407,6 @@ class Tensor:
         
         out = Tensor(out, (self, kernels), op=self.conv2d)
         def grad_fn(gradient):
-            print(f"gradient {gradient.shape}")
             self.grad = np.zeros_like(self.data)
             kernels.grad = np.zeros_like(kernels.data)
 
@@ -434,14 +420,7 @@ class Tensor:
         
         return out
     
-        
-    
-    
-    
-    
-    
-    
-    
+     
     def __neg__(self):
         return self * -1
 
@@ -548,6 +527,26 @@ class Head(Module):
     def parameters(self):
         return [*self.key.parameters(),*self.query.parameters(),*self.value.parameters()]
 
+# class LayerNorm(Module):
+#     # input of shape (N,D)
+#     # or other i think
+#     def __init__(self, normalized_shape):
+#         # normalized_shape is equivalent to num_features for input in form (N,num_features)
+#         self.normalized_shape = normalized_shape
+        
+#         self.gamma = Tensor.ones(normalized_shape)
+#         self.beta = Tensor.zeros(normalized_shape)
+        
+#     def __call__(self, x):
+#         # x is of shape normalized_shape
+#         m = x.mean(axis=self.normalized_shape, keepdims=True)
+#         v = x.var(m, axis=self.normalized_shape, keepdims=True) + 1e-5
+        
+#         return ((x - m)/v.sqrt())*self.gamma + self.beta
+        
+        
+#     def parameters(self):
+#         return [self.gamma, self.beta]
 
 
 class MHA(Module):
@@ -592,8 +591,8 @@ class Block(Module):
         head_size = n_embd // num_heads
         self.sa = MHA(block_size,n_embd,num_heads,head_size,dropout,do_mask)
         self.ffwd = FeedForward(n_embd)
-        self.ln1 = LayerNorm(n_embd)
-        self.ln2 = LayerNorm(n_embd)
+        self.ln1 = LayerNorm1D(n_embd)
+        self.ln2 = LayerNorm1D(n_embd)
         
     def __call__(self, x):
         x = x + self.sa(self.ln1(x))
@@ -606,16 +605,6 @@ class Block(Module):
         
         
 
-
-
-
-
-
-
-
-
-    
-    
 
 class LinearLayer(Module):
     
@@ -737,6 +726,7 @@ class MultiHeadAttention(Module):
         
         # output linear projection
         self.W_O = Tensor(np.random.uniform(-k, k, (int(self.h*self.d_v), self.d_model)))
+        
     
     def __call__(self, Q, K, V):
         
@@ -832,14 +822,13 @@ class TemporalAffine(Module):
 
 
 
-class LayerNorm(Module):
-    
-    def __init__(self, normalized_shape):
-        self.normalized_shape = normalized_shape
-        # compute mean and variance over last D dims of input
-        #self.D = len(normalized_shape) 
-        self.gamma = Tensor(np.ones(normalized_shape))
-        self.beta = Tensor(np.zeros(normalized_shape))
+class LayerNorm1D(Module):
+    # input of shape (N,D)
+    def __init__(self, num_features):
+        self.num_features = num_features
+        
+        self.gamma = Tensor.ones(num_features)
+        self.beta = Tensor.zeros(num_features)
         self.eps = 1e-5
         
     def __call__(self, x):
@@ -882,7 +871,7 @@ class VanillaRNNBlock(Module):
         seq = []
         
         for i in range(self.T):
-            step_out = vanilla_rnn_step(x[:,i,:])
+            step_out = self.rnn_step(x[:,i,:])
             seq.append(step_out)
             self.prev_h = step_out
         
@@ -1008,7 +997,7 @@ def line_plot(tensor_data, ylabel='loss', xlabel='epochs'):
 
     
 if __name__=="__main__":
-    
+    pass    
     
     # m = 10
     # n = 6
@@ -1045,12 +1034,12 @@ if __name__=="__main__":
     # out.backward()
     
     
-    x = Tensor(np.random.randn(10,5))
-    LN = LayerNorm(5)
-    y = LN(x)
-    print(y.data.var(axis=1))
-    print(y.shape)
-    y.backward()
+    # x = Tensor(np.random.randn(10,5))
+    # LN = LayerNorm1D(5)
+    # y = LN(x)
+    # print(y.data.var(axis=1))
+    # print(y.shape)
+    # y.backward()'
     #print(x)
     
     
