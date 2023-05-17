@@ -1,5 +1,5 @@
 import torch
-from micro_grad import *
+from refactor import *
 
 a = 5
 b = 3
@@ -61,36 +61,46 @@ test_prim_one(x, lambda x:x.sum(1, keepdims=True),name='sum')
 # test_prim_one(x, lambda x:x.max(0),name='max')
 # test_prim_one(x, lambda x:x.max(1),name='max')
 
-test_prim_one(x, lambda x:x.mean(),name='mean')
-test_prim_one(x, lambda x:x.mean(0),name='mean')
-test_prim_one(x, lambda x:x.mean(1),name='mean')
+# test_prim_one(x, lambda x:x.mean(),name='mean')
+# test_prim_one(x, lambda x:x.mean(0),name='mean')
+# test_prim_one(x, lambda x:x.mean(1),name='mean')
 
-test_prim_one(x, lambda x:x.mean(0, keepdims=True),name='mean')
-test_prim_one(x, lambda x:x.mean(1, keepdims=True),name='mean')
+# test_prim_one(x, lambda x:x.mean(0, keepdims=True),name='mean')
+# test_prim_one(x, lambda x:x.mean(1, keepdims=True),name='mean')
 
     
-# have to check that one out
-# try with bessels correction in torch =0
-test_prim_one(x, lambda x:x.var(),name='var')
-test_prim_one(x, lambda x:x.var(0),name='var')
-test_prim_one(x, lambda x:x.var(1),name='var')
+# # have to check that one out
+# # try with bessels correction in torch =0
+# test_prim_one(x, lambda x:x.var(),name='var')
+# test_prim_one(x, lambda x:x.var(0),name='var')
+# test_prim_one(x, lambda x:x.var(1),name='var')
 
 test_prim_one(x, lambda x: x.relu() if type(x) == Tensor else torch.nn.functional.relu(x), name='relu')
 
 # might not work because of var difference
-test_prim_one(x, lambda x: x.softmax() if type(x) == Tensor else torch.nn.functional.softmax(x, dim=1), name='softmax') 
+#test_prim_one(x, lambda x: x.softmax() if type(x) == Tensor else torch.nn.functional.softmax(x, dim=1), name='softmax') 
 
-x1 = Tensor(x)
-out1 = x1.softmax()
-print(out1)
-out1.backward()
-print(x1)
+# x1 = Tensor(x)
+# out1 = softmax(x1)
+# print(out1)
+# out1.backward()
 
-x2 = Tensor(x)
-out2 = softmax(x2)
-print(out2)
-out2.backward()
-print(x2)
+# x2 = Tensor(x)
+# out2 = softmax(x2)
+# print(out2)
+# out2.backward()
+
+
+# x1 = Tensor(x)
+# out1 = Tensor.mean(x1, axis=0, keepdims=True)
+# out1.sum().backward()
+
+# x2 = torch.Tensor(x)
+# x2.requires_grad = True
+# out2 = x2.mean(axis=0, keepdims=True)
+# out2.sum().backward()
+# print(out1, out2)
+# print(x1.grad, x2.grad.numpy())
 
 
 

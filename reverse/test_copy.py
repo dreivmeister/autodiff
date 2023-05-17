@@ -1,8 +1,25 @@
-from micro_grad import *
+from refactor import *
 """
 A = Tensor(np.array([[1,2],[3,4]]))
 b = A[0] # b = [1,2]
 """
+
+def tanh(x):
+    y = (-2.0 * x).exp()
+    return (1.0 - y) / (1.0 + y)
+
+x = Tensor(1.)
+
+y = tanh(x)
+y.backward()
+
+print(x)
+print(y)
+
+
+out, grad_tanh = vjp(tanh, [x])
+print(out)
+print(grad_tanh())
 
 
 # A = Tensor(np.array([[1,2],
@@ -61,20 +78,20 @@ b = A[0] # b = [1,2]
 
 
 
-batch_size = 4
-block_size = 8
+# batch_size = 4
+# block_size = 8
 
-n_embd = 32
-n_head = 4
-head_size = n_embd // n_head
-x = Tensor(np.random.rand(batch_size,block_size,n_embd))
-#MH = MHA(block_size,n_embd,n_head,head_size,do_mask=True)
-B = Block(block_size,n_embd,n_head,do_mask=True)
-out = B(x)
-print(out.shape)
-out.sum().backward()
-out.generate_graph().render()
-#print(x.grad.shape)
+# n_embd = 32
+# n_head = 4
+# head_size = n_embd // n_head
+# x = Tensor(np.random.rand(batch_size,block_size,n_embd))
+# #MH = MHA(block_size,n_embd,n_head,head_size,do_mask=True)
+# B = Block(block_size,n_embd,n_head,do_mask=True)
+# out = B(x)
+# print(out.shape)
+# out.sum().backward()
+# out.generate_graph().render()
+# #print(x.grad.shape)
 
 
 

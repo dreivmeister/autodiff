@@ -1,7 +1,6 @@
+import matplotlib.pyplot as plt
 import numpy as np
-
-D_NUMBER = 'NUMBER'
-D_VECTOR = 'VECTOR'
+from time import time
 
 def arg_checker(other, name):
     if isinstance(other, Dual):
@@ -18,33 +17,30 @@ def arg_checker(other, name):
 
 class Dual:
     def __init__(self, real, dual=None) -> None:
-        self.type = None
-        self.real = None
-        self.dual = None
+        self.real = real
+        self.dual = dual
         
         # real can be int or float
         if isinstance(real, (int,float,np.int32,np.float64)):
-            self.type = D_NUMBER
             self.real = real
-            if isinstance(dual, (int, float)):
+            if isinstance(dual, (int,float,np.int32,np.float64)):
                 self.dual = dual
             elif isinstance(dual, (np.ndarray, list)):
-                self.dual = np.array(dual)
+                self.dual = np.asarray(dual)
             elif dual is None:
                 self.dual = 1.0
         # real can be nparray (n-dim) or list
         elif isinstance(real, (np.ndarray, list)):
-            self.type = D_VECTOR
-            self.real = np.array(real)
+            self.real = np.asarray(real)
             if isinstance(dual, (np.ndarray, list)):
-                self.dual = np.array(dual)
+                self.dual = np.asarray(dual)
             elif dual is None:
                 self.dual = np.ones_like(self.real)
         else:
             raise AttributeError('wrong init')
     
     def __repr__(self):
-        if self.real.ndim > 1:
+        if isinstance(self.real, np.ndarray) and self.real.ndim > 1:
             return f"{self.__class__.__name__}(\n{self.real},\n{self.dual})"
         return f"{self.__class__.__name__}({self.real},{self.dual})"
     
@@ -203,24 +199,61 @@ def sqrt(x):
     else:
         raise AttributeError('wrong type sqrt')
     
-def dot_product(a, b):
+def transpose(A):
+    # matrix is 2D
+    A = arg_checker(A, name='transpose')
+    
+    if A.real.ndim != 2:
+        raise AttributeError('wrong ndims in transpose')
+    
+    if isinstance(A, Dual):
+        return Dual(
+            A.real.T,
+            A.dual.T
+        )
+    else:
+        raise AttributeError('wrong type transpose')
+    
+def inner_product(a, b):
     # dot product of two 1D arrays
-    a = arg_checker(a, name='dot_prod')
-    b = arg_checker(b, name='dot_prod')
+    # inner product
+    a = arg_checker(a, name='inner_prod')
+    b = arg_checker(b, name='inner_prod')
     
     if a.real.ndim != 1 or b.real.ndim != 1:
-        raise AttributeError('wrong ndims in dot_prod')
+        raise AttributeError('wrong ndims in inner_prod')
     if len(a.real) != len(b.real):
-        raise AttributeError('wrong nelems in dot_prod')
+        raise AttributeError('wrong nelems in inner_prod')
     
     if isinstance(a, Dual) and isinstance(b, Dual):
         return Dual(
             np.dot(a.real,b.real),
-            a.dual*b.real+b.dual*a.real)
+            np.dot(a.dual,b.real)+np.dot(a.real,b.dual))
         #a.dual*np.sum(b.real)+b.dual*np.sum(a.real)
         # dont know about the tangent
     else:
-        raise AttributeError('wrong type dot_prod')
+        raise AttributeError('wrong type inner_prod')
+    
+def outer_product(a, b):
+    # dot product of two 1D arrays
+    # inner product
+    a = arg_checker(a, name='outer_prod')
+    b = arg_checker(b, name='outer_prod')
+    
+    if a.real.ndim != 1 or b.real.ndim != 1:
+        raise AttributeError('wrong ndims in outer_prod')
+    if len(a.real) != len(b.real):
+        raise AttributeError('wrong nelems in outer_prod')
+    
+    if isinstance(a, Dual) and isinstance(b, Dual):
+        return Dual(
+            np.outer(a.real,b.real),
+            np.outer(a.dual,b.real)+np.outer(a.real,b.dual))
+        #a.dual*np.sum(b.real)+b.dual*np.sum(a.real)
+        # dont know about the tangent
+    else:
+        raise AttributeError('wrong type outer_prod')    
+
     
 def matrix_vector_product(A, x):
     # A*x as matrix vector product A (2D), x (1D)
@@ -255,6 +288,34 @@ def matrix_matrix_product(A, B):
             np.matmul(A.dual,B.real)+np.matmul(A.real,B.dual))
     else:
         raise AttributeError('wrong type mmp')
+    
+def scalar_root_finding(g,theta):
+    # scalar_root_finding is f parameterized by g and theta
+    # g is the function which should be solved
+    # g(x, theta) = 0
+    # x is the solution
+    first_guess = 1
+    x, _, dg_dx = newtons_method(lambda u: g(u,theta),first_guess)
+    _,dg_dtheta = val_and_grad(lambda u: g(x,u),theta)
+    
+    
+    print(x)
+    print(dg_dx)
+    print(dg_dtheta)
+    
+    return Dual(
+        x,
+        -(1./dg_dx)*dg_dtheta.real
+    )
+    
+def linear_system(A, b):
+    A_inv = np.linalg.inv(A.real)
+    x = np.dot(A_inv,b.real)
+    return Dual(
+        x,
+        np.dot(A_inv,b.dual - np.dot(A.dual,x))
+    )
+    
 
 def jacobian(results):
     jac_matrix = []
@@ -264,11 +325,13 @@ def jacobian(results):
     return np.vstack(jac_matrix)
 
 def val_and_grad(function, eval_point):
-    # eval_point - list of scalar(s)
-    # like: [2,4,6] or [2] or [2.3,234.2]
-    if not isinstance(eval_point, list):
-        raise AttributeError('eval_point must be a list of scalars or a of one scalar')
-    v = Dual.from_array(eval_point)
+    # eval_point - list of scalar(s) or scalar
+    # like: [2,4,6] or 2 or [2.3,234.2]
+    
+    if isinstance(eval_point, (int,float)):
+        v = Dual.from_array([eval_point])
+    elif isinstance(eval_point, (list,np.ndarray)):
+        v = Dual.from_array(eval_point)
     
     # one input
     if isinstance(v, Dual):
@@ -302,28 +365,83 @@ def evalf(x):
     return x.real if Dual.is_constant(x) else x
 
     
-def f(x):
-    return (4*(x ** 2) + 3 - x - 12) / (2*x)
+def f(x,y):
+    return (
+        (
+            4*(x ** 2) + 3 - y - 12) / (2*x),
+            x * y,
+            14 + x ** 2 * 4
+        )
 
-def g(x,y):
-    return 7 * (x ** 3) + 3 * y
+def g(x, theta):
+    return x**2 - sin(theta)
 
 # Vector function mapping 3 inputs to 3 outputs.
-def h(x, y, z): 
+def h(x, y): 
     return (
-        7 * (x ** 3) + 3 * y,
-        y / x + z ** 2 - log(x),
-        sqrt(y*x) + exp(z)
+        x**2 + y**2 - 20,
+        x - y + 2
             )
 
+def newtons_method(f, curr_val, max_iter=10000, tol=1e-8):
+    # x_k+1 = x_k - (f(x_k)/f'(x_k))    
+    # for now single variable
+    
+    for _ in range(max_iter):
+        func_val, der_val = val_and_grad(f, curr_val)
+        
+        new_val = curr_val - (func_val/(der_val + 1e-10))
+        if abs(new_val - curr_val).all() < tol:
+            break
+        curr_val = new_val
+    return curr_val, *val_and_grad(f, curr_val)
+
+
+def newtons_method_kk(f, curr_val, max_iter=10000, tol=1e-8):
+    
+    for _ in range(max_iter):
+        func_val, jacobian = val_and_grad(f, curr_val)
+        xk1_xk = np.linalg.solve(jacobian,-func_val)
+        next_val = xk1_xk + curr_val
+        
+        if abs(next_val - curr_val).all() < tol:
+            break        
+        curr_val = next_val
+    
+    return curr_val, *val_and_grad(f, curr_val)
+        
         
 # if user wants to track gradients, needs pass a Dual object
 # else it will be handled like a constant with zero gradient
 if __name__=="__main__":
-    # h : R^n -> R^m
-    res = val_and_grad(f, [4])
-    print(res[0]) # value vector
-    print(res[1]) # jacobian
+    # #h : R^n -> R^m
+    
+    # A = Dual([[1,2],[3,4]])
+    # b = Dual([3,4])
+    # x = linear_system(A,b)
+    # print(x)
+    
+    
+    theta = 1
+    x = scalar_root_finding(g,theta)
+    print(x)
+    
+    
+    
+    # final_val, final_out, final_der = newtons_method_kk(h,[-1,-2])
+    # print(f"sol: {final_val}\nval: {final_out}\nder: {final_der}\n")
+    
+    
+    
+    
+    
+    # out_vector, jac_matrix = val_and_grad(g, [4])
+    # print(out_vector) # value vector
+    # print(jac_matrix) # jacobian
+    
+    # final_val, final_out, final_der = newtons_method(g,1)
+    # print(f"sol: {final_val}\nval: {final_out}\nder: {final_der}\n")
+    
     
     # x = Dual([1,2])
     # print(x)
